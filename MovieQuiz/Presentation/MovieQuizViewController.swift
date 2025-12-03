@@ -8,12 +8,6 @@ final class MovieQuizViewController: UIViewController {
     @IBOutlet private weak var noButton: UIButton!
     @IBOutlet private weak var yesButton: UIButton!
     
-    private struct QuizQuestion {
-        let image: String
-        let text: String
-        let correctAnswer: Bool
-    }
-    
     private struct QuizStepViewModel {
         let image: UIImage
         let question: String
@@ -53,6 +47,24 @@ final class MovieQuizViewController: UIViewController {
         let firstQuestion = questions[currentQuestionIndex]
         let viewModel = convert(model: firstQuestion)
         show(quiz: viewModel)
+    }
+    
+    @IBAction private func noButtonClicked(_ sender: UIButton) {
+        setButtonsEnabled(false)
+        let currentQuestion = questions[currentQuestionIndex]
+        let correctAnswer = currentQuestion.correctAnswer
+        let userAnswer = false
+        let isCorrectAnswer = userAnswer == correctAnswer
+        showAnswerResult(isCorrect: isCorrectAnswer)
+    }
+    
+    @IBAction private func yesButtonClicked(_ sender: UIButton) {
+        setButtonsEnabled(false)
+        let currentQuestion = questions[currentQuestionIndex]
+        let correctAnswer = currentQuestion.correctAnswer
+        let userAnswer = true
+        let isCorrectAnswer = userAnswer == correctAnswer
+        showAnswerResult(isCorrect: isCorrectAnswer)
     }
     
     private func show(quiz step: QuizStepViewModel) {
@@ -97,7 +109,8 @@ final class MovieQuizViewController: UIViewController {
             message: result.text,
             preferredStyle: .alert)
         
-        let action = UIAlertAction(title: result.buttonText, style: .default) { _ in
+        let action = UIAlertAction(title: result.buttonText, style: .default) { [weak self] _ in
+            guard let self = self else { return }
             self.currentQuestionIndex = 0
             self.correctAnswers = 0
             
@@ -113,9 +126,9 @@ final class MovieQuizViewController: UIViewController {
     private func showNextQuestionOrResults() {
       if currentQuestionIndex == questions.count - 1 {
           let viewModel = QuizResultsViewModel(
-            title: "Раунд окончен!",
-            text: "Ваш результат: \(correctAnswers)/10",
-            buttonText: "Сыграть еще раз")
+            title: Constants.roundFinished,
+            text: "\(Constants.resultText) \(correctAnswers)/\(Constants.totalQuestions)",
+            buttonText: Constants.playAgain)
           
           show(quiz: viewModel)
           
@@ -133,28 +146,11 @@ final class MovieQuizViewController: UIViewController {
         yesButton.isEnabled = isEnabled
         noButton.isEnabled = isEnabled
     }
-    
-    @IBAction private func noButtonClicked(_ sender: UIButton) {
-        setButtonsEnabled(false)
-        let currentQuestion = questions[currentQuestionIndex]
-        let correctAnswer = currentQuestion.correctAnswer
-        let userAnswer = false
-        if userAnswer == correctAnswer {
-            showAnswerResult(isCorrect: true)
-        } else {
-            showAnswerResult(isCorrect: false)
-        }
-    }
-    
-    @IBAction private func yesButtonClicked(_ sender: UIButton) {
-        setButtonsEnabled(false)
-        let currentQuestion = questions[currentQuestionIndex]
-        let correctAnswer = currentQuestion.correctAnswer
-        let userAnswer = true
-        if userAnswer == correctAnswer {
-            showAnswerResult(isCorrect: true)
-        } else {
-            showAnswerResult(isCorrect: false)
-        }
-    }
+}
+
+private enum Constants {
+    static let roundFinished = "Раунд окончен!"
+    static let resultText = "Ваш результат: "
+    static let playAgain = "Сыграть еще раз"
+    static let totalQuestions = 10
 }
