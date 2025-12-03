@@ -62,6 +62,8 @@ final class MovieQuizViewController: UIViewController {
         
         imageView.layer.borderWidth = 0
         imageView.layer.borderColor = UIColor.clear.cgColor
+        imageView.layer.cornerRadius = 20
+        setButtonsEnabled(true)
     }
     
     private func convert(model: QuizQuestion) -> QuizStepViewModel {
@@ -127,7 +129,13 @@ final class MovieQuizViewController: UIViewController {
       }
     }
     
+    private func setButtonsEnabled(_ isEnabled: Bool) {
+        yesButton.isEnabled = isEnabled
+        noButton.isEnabled = isEnabled
+    }
+    
     @IBAction private func noButtonClicked(_ sender: UIButton) {
+        setButtonsEnabled(false)
         let currentQuestion = questions[currentQuestionIndex]
         let correctAnswer = currentQuestion.correctAnswer
         let userAnswer = false
@@ -139,6 +147,7 @@ final class MovieQuizViewController: UIViewController {
     }
     
     @IBAction private func yesButtonClicked(_ sender: UIButton) {
+        setButtonsEnabled(false)
         let currentQuestion = questions[currentQuestionIndex]
         let correctAnswer = currentQuestion.correctAnswer
         let userAnswer = true
