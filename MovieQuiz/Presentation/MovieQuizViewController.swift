@@ -13,15 +13,23 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     private let questionsAmount: Int = 10
     private var questionFactory: QuestionFactoryProtocol?
     private var currentQuestion: QuizQuestion?
+    private var alertPresenter: AlertPresenter?
+    private let statisticService: StatisticServiceProtocol = StatisticService()
+    private let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "(dd.MM.yy HH:mm)"
+        return formatter
+    }()
     
     // MARK: - Lifecycle
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+      
         let questionFactory = QuestionFactory()
         questionFactory.delegate = self
         self.questionFactory = questionFactory
+        alertPresenter = AlertPresenter(screen: self)
         
         yesButton.layer.cornerRadius = 15
         yesButton.clipsToBounds = true
@@ -110,31 +118,26 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     }
     
     private func show(quiz result: QuizResultsViewModel) {
-        let alert = UIAlertController(
+        let alertModel = AlertModel(
             title: result.title,
             message: result.text,
-            preferredStyle: .alert
-        )
-
-        let handler: (UIAlertAction) -> Void = { [weak self] _ in
-            guard let self = self else { return }
+            buttonText: result.buttonText)
+        { [weak self] in
+        guard let self = self else { return }
             self.currentQuestionIndex = 0
             self.correctAnswers = 0
-            
-            questionFactory?.requestNextQuestion()
+            self.questionFactory?.requestNextQuestion()
         }
-
-        let action = UIAlertAction(title: result.buttonText, style: .default, handler: handler)
-
-        alert.addAction(action)
-        self.present(alert, animated: true, completion: nil)
+        alertPresenter?.showAlert(model: alertModel)
     }
         
     private func showNextQuestionOrResults() {
         if currentQuestionIndex == questionsAmount - 1 {
+            statisticService.store(correct: correctAnswers, total: questionsAmount)
+            
             let viewModel = QuizResultsViewModel(
                 title: Constants.roundFinished,
-                text: "\(Constants.resultText) \(correctAnswers)/\(Constants.totalQuestions)",
+                text: "\(Constants.resultText) \(correctAnswers)/\(Constants.totalQuestions)\n \(Constants.totalText) \(statisticService.gamesCount)\n \(Constants.recordText) \(statisticService.bestGame.correct)/\(statisticService.bestGame.total) \(dateFormatter.string(from: statisticService.bestGame.date))\n \(Constants.accuracyText) \(String(format: "%.2f", statisticService.totalAccuracy))%",
                 buttonText: Constants.playAgain)
             
             show(quiz: viewModel)
@@ -155,6 +158,9 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     private enum Constants {
         static let roundFinished = "Раунд окончен!"
         static let resultText = "Ваш результат: "
+        static let totalText = "Количество сыгранных квизов: "
+        static let recordText = "Рекорд: "
+        static let accuracyText = "Средняя точность: "
         static let playAgain = "Сыграть еще раз"
         static let totalQuestions = 10
     }
