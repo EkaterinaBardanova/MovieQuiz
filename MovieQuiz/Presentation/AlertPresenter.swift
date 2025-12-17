@@ -4,8 +4,6 @@
 //
 //  Created by Екатерина Барданова on 13. 12. 2025..
 //
-
-import Foundation
 import UIKit
 
 final class AlertPresenter {
@@ -23,6 +21,3 @@ final class AlertPresenter {
         screenToShowAlertOn?.present(alert, animated: true, completion: nil)
     }
 }
-
-    
-

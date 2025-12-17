@@ -2,19 +2,28 @@ import UIKit
 
 final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     
+    // MARK: - IBOutlets
+    
     @IBOutlet private weak var textLabel: UILabel!
     @IBOutlet private weak var counterLabel: UILabel!
     @IBOutlet private weak var imageView: UIImageView!
     @IBOutlet private weak var noButton: UIButton!
     @IBOutlet private weak var yesButton: UIButton!
     
+    // MARK: - State
+    
     private var currentQuestionIndex: Int = 0
     private var correctAnswers = 0
-    private let questionsAmount: Int = 10
-    private var questionFactory: QuestionFactoryProtocol?
     private var currentQuestion: QuizQuestion?
+    
+    // MARK: - Dependencies
+    
+    private var questionFactory: QuestionFactoryProtocol?
     private var alertPresenter: AlertPresenter?
     private let statisticService: StatisticServiceProtocol = StatisticService()
+    
+    // MARK: - Helpers
+    
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "(dd.MM.yy HH:mm)"
@@ -25,19 +34,26 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-      
+        setupDependencies()
+        setupUI()
+        requestFirstQuestion()
+    }
+    
+    private func setupDependencies() {
         let questionFactory = QuestionFactory()
         questionFactory.delegate = self
         self.questionFactory = questionFactory
         alertPresenter = AlertPresenter(screen: self)
-        
+    }
+    
+    private func setupUI() {
         yesButton.layer.cornerRadius = 15
-        yesButton.clipsToBounds = true
-        
         noButton.layer.cornerRadius = 15
-        noButton.clipsToBounds = true
-        
-        questionFactory.requestNextQuestion()
+    }
+
+    
+    private func requestFirstQuestion() {
+        questionFactory?.requestNextQuestion()
     }
     
     // MARK: - QuestionFactoryDelegate
@@ -58,28 +74,23 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     // MARK: - Actions
     
     @IBAction private func noButtonClicked(_ sender: UIButton) {
-        setButtonsEnabled(false)
-        guard let currentQuestion = currentQuestion else {
-            return
-        }
-        let correctAnswer = currentQuestion.correctAnswer
-        let userAnswer = false
-        let isCorrectAnswer = userAnswer == correctAnswer
-        showAnswerResult(isCorrect: isCorrectAnswer)
+        handleAnswer(false)
     }
     
     @IBAction private func yesButtonClicked(_ sender: UIButton) {
+        handleAnswer(true)
+    }
+    
+    // MARK: - Private functions
+    
+    private func handleAnswer (_ userAnswer: Bool) {
         setButtonsEnabled(false)
         guard let currentQuestion = currentQuestion else {
             return
         }
-        let correctAnswer = currentQuestion.correctAnswer
-        let userAnswer = true
-        let isCorrectAnswer = userAnswer == correctAnswer
+        let isCorrectAnswer = userAnswer == currentQuestion.correctAnswer
         showAnswerResult(isCorrect: isCorrectAnswer)
     }
-    
-    // MARK: - Private functions
     
     private func show(quiz step: QuizStepViewModel) {
         counterLabel.text = step.questionNumber
@@ -96,7 +107,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         QuizStepViewModel(
             image: UIImage(named: model.image) ?? UIImage(),
             question: model.text,
-            questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)")
+            questionNumber: "\(currentQuestionIndex + 1)/\(Constants.totalQuestions)")
     }
     
     private func showAnswerResult(isCorrect: Bool) {
@@ -132,21 +143,29 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     }
         
     private func showNextQuestionOrResults() {
-        if currentQuestionIndex == questionsAmount - 1 {
-            statisticService.store(correct: correctAnswers, total: questionsAmount)
-            
-            let viewModel = QuizResultsViewModel(
-                title: Constants.roundFinished,
-                text: "\(Constants.resultText) \(correctAnswers)/\(Constants.totalQuestions)\n \(Constants.totalText) \(statisticService.gamesCount)\n \(Constants.recordText) \(statisticService.bestGame.correct)/\(statisticService.bestGame.total) \(dateFormatter.string(from: statisticService.bestGame.date))\n \(Constants.accuracyText) \(String(format: "%.2f", statisticService.totalAccuracy))%",
-                buttonText: Constants.playAgain)
-            
-            show(quiz: viewModel)
-            
+        if currentQuestionIndex == Constants.totalQuestions - 1 {
+            showResult()
         } else {
             currentQuestionIndex += 1
-            
             questionFactory?.requestNextQuestion()
         }
+    }
+    
+    private func showResult() {
+        statisticService.store(correct: correctAnswers, total: Constants.totalQuestions)
+        
+        let viewModel = QuizResultsViewModel(
+            title: Constants.roundFinished,
+            text: makeResultText(),
+            buttonText: Constants.playAgain)
+        
+        show(quiz: viewModel)
+    }
+    
+    private func makeResultText() -> String {
+        """
+        \(Constants.resultText) \(correctAnswers)/\(Constants.totalQuestions)\n \(Constants.totalText) \(statisticService.gamesCount)\n \(Constants.recordText) \(statisticService.bestGame.correct)/\(statisticService.bestGame.total) \(dateFormatter.string(from: statisticService.bestGame.date))\n \(Constants.accuracyText) \(String(format: "%.2f", statisticService.totalAccuracy))%
+        """
     }
             
     private func setButtonsEnabled(_ isEnabled: Bool) {
@@ -165,4 +184,3 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         static let totalQuestions = 10
     }
 }
-
