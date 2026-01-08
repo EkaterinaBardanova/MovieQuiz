@@ -110,6 +110,10 @@ layer.masksToBounds</string>
                                     </stackView>
                                 </subviews>
                             </stackView>
+                            <activityIndicatorView opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" style="medium" id="HEG-g5-TbD">
+                                <rect key="frame" x="438" y="197" width="20" height="20"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                            </activityIndicatorView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                         <color key="backgroundColor" name="YP Black"/>
@@ -121,6 +125,7 @@ layer.masksToBounds</string>
                         </constraints>
                     </view>
                     <connections>
+                        <outlet property="activityIndicator" destination="HEG-g5-TbD" id="dEo-7g-6X1"/>
                         <outlet property="counterLabel" destination="iag-5o-q46" id="u5d-fN-EGA"/>
                         <outlet property="imageView" destination="zV9-yF-w2d" id="1Qi-23-if1"/>
                         <outlet property="noButton" destination="lms-w0-peY" id="bif-cy-sAJ"/>
@@ -130,7 +135,7 @@ layer.masksToBounds</string>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="-55.072463768115945" y="55.580357142857139"/>
+            <point key="canvasLocation" x="-55.580357142857139" y="55.072463768115945"/>
         </scene>
     </scenes>
     <resources>

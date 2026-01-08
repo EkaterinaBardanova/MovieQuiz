@@ -10,6 +10,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     @IBOutlet private weak var noButton: UIButton!
     @IBOutlet private weak var yesButton: UIButton!
     
+    @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
     // MARK: - State
     
     private var currentQuestionIndex: Int = 0
@@ -20,7 +21,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     
     private var questionFactory: QuestionFactoryProtocol?
     private var alertPresenter: AlertPresenter?
-    private let statisticService: StatisticServiceProtocol = StatisticService()
+    private var statisticService: StatisticServiceProtocol = StatisticService()
     
     // MARK: - Helpers
     
@@ -36,12 +37,13 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         super.viewDidLoad()
         setupDependencies()
         setupUI()
-        requestFirstQuestion()
+        showLoadingIndicator()
+        questionFactory?.loadData()
     }
     
     private func setupDependencies() {
-        let questionFactory = QuestionFactory()
-        questionFactory.delegate = self
+        let moviesLoader = MoviesLoader()
+        let questionFactory = QuestionFactory(moviesLoader: moviesLoader, delegate: self)
         self.questionFactory = questionFactory
         alertPresenter = AlertPresenter(screen: self)
     }
@@ -49,11 +51,37 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     private func setupUI() {
         yesButton.layer.cornerRadius = 15
         noButton.layer.cornerRadius = 15
+        imageView.layer.cornerRadius = 20
     }
 
     
     private func requestFirstQuestion() {
         questionFactory?.requestNextQuestion()
+    }
+    
+    private func showLoadingIndicator() {
+        activityIndicator.isHidden = false
+        activityIndicator.startAnimating()
+    }
+    
+    private func hideLoadingIndicator() {
+        activityIndicator.isHidden = true
+        activityIndicator.stopAnimating()
+    }
+    
+    private func showNetworkError(message: String) {
+        hideLoadingIndicator() 
+        
+        let model = AlertModel(
+            title: Constants.alertNetworkTitle,
+            message: "",
+            buttonText: Constants.alertNetworkButton) { [ weak self ] in
+                guard let self else { return }
+                self.currentQuestionIndex = 0
+                self.correctAnswers = 0
+                self.questionFactory?.requestNextQuestion()
+            }
+        alertPresenter?.showAlert(model: model)
     }
     
     // MARK: - QuestionFactoryDelegate
@@ -69,6 +97,23 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         DispatchQueue.main.async { [weak self] in
             self?.show(quiz: viewModel)
         }
+    }
+    
+    func didLoadDataFromServer() {
+        activityIndicator.isHidden = true 
+        questionFactory?.requestNextQuestion()
+    }
+
+    func didFailToLoadData(with error: Error) {
+        hideLoadingIndicator()
+        
+        let model = AlertModel(
+            title: Constants.alertNetworkTitle,
+            message: Constants.alertNetworkTitle,
+            buttonText: Constants.alertNetworkButton) { [weak self] in
+                self?.questionFactory?.loadData()
+            }
+        alertPresenter?.showAlert(model: model)
     }
     
     // MARK: - Actions
@@ -104,8 +149,8 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     }
     
     private func convert(model: QuizQuestion) -> QuizStepViewModel {
-        QuizStepViewModel(
-            image: UIImage(named: model.image) ?? UIImage(),
+        return QuizStepViewModel(
+            image: UIImage(data: model.image) ?? UIImage(),
             question: model.text,
             questionNumber: "\(currentQuestionIndex + 1)/\(Constants.totalQuestions)")
     }
@@ -182,5 +227,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         static let accuracyText = "Средняя точность: "
         static let playAgain = "Сыграть еще раз"
         static let totalQuestions = 10
+        static let alertNetworkButton = "Попробовать еще раз"
+        static let alertNetworkTitle = "Ошибка сети"
     }
 }
