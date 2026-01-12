@@ -1,10 +1,3 @@
-//
-//  QuestionFactory.swift
-//  MovieQuiz
-//
-//  Created by Екатерина Барданова on 11. 12. 2025..
-//
-
 import Foundation
 
 final class QuestionFactory: QuestionFactoryProtocol  {
@@ -37,14 +30,28 @@ final class QuestionFactory: QuestionFactoryProtocol  {
                 }
                 return
             }
+            guard let movieRating = Float(movie.rating) else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.delegate?.didFailToLoadData(
+                        with: NSError(domain: "RatingConversion", code: 0)
+                    )
+                }
+                return
+            }
+            
+            let comparison = Bool.random() ? ">" : "<"
+            let possibleRatings: [Float] = [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0]
+            let randomRating: Float = possibleRatings.randomElement() ?? 7.0
+            let questionText = "Рейтинг этого фильма \(comparison == ">" ? "больше" : "меньше") чем \(randomRating)?"
+            let correctAnswer = comparison == ">"
+                ? movieRating > randomRating
+                : movieRating < randomRating
+        
             
             let rating = Float(movie.rating) ?? 0
             
-            let text = "Рейтинг этого фильма больше чем 7?"
-            let correctAnswer = rating > 7
-            
             let question = QuizQuestion(image: imageData,
-                                        text: text,
+                                        text: questionText,
                                         correctAnswer: correctAnswer)
             
             DispatchQueue.main.async { [weak self] in
@@ -69,3 +76,4 @@ final class QuestionFactory: QuestionFactoryProtocol  {
         }
     }
 }
+
