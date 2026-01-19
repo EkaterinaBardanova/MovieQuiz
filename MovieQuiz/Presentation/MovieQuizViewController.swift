@@ -14,12 +14,11 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     // MARK: - State
     
     private var correctAnswers = 0
-    private var currentQuestion: QuizQuestion?
     private let presenter = MovieQuizPresenter()
     
     // MARK: - Dependencies
     
-    private var questionFactory: QuestionFactoryProtocol?
+    var questionFactory: QuestionFactoryProtocol?
     private var alertPresenter: AlertPresenter?
     private var statisticService: StatisticServiceProtocol = StatisticService()
     
@@ -57,7 +56,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     }
     
     
-    private func requestFirstQuestion() {
+    func requestFirstQuestion() {
         questionFactory?.requestNextQuestion()
     }
     
@@ -89,16 +88,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     // MARK: - QuestionFactoryDelegate
     
     func didReceiveNextQuestion(question: QuizQuestion?) {
-        guard let question = question else {
-            return
-        }
-        
-        currentQuestion = question
-        let viewModel = presenter.convert(model: question)
-        
-        DispatchQueue.main.async { [weak self] in
-            self?.show(quiz: viewModel)
-        }
+        presenter.didReceiveNextQuestion(question: question)
     }
     
     func didLoadDataFromServer() {
@@ -121,18 +111,16 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     // MARK: - Actions
     
     @IBAction private func noButtonClicked(_ sender: UIButton) {
-        presenter.currentQuestion = currentQuestion
-        presenter.noButtonClicked()
+        presenter.yesButtonClicked()
     }
     
     @IBAction private func yesButtonClicked(_ sender: UIButton) {
-        presenter.currentQuestion = currentQuestion
-        presenter.yesButtonClicked()
+        presenter.noButtonClicked()
     }
     
     // MARK: - Private functions
     
-    private func show(quiz step: QuizStepViewModel) {
+    func show(quiz step: QuizStepViewModel) {
         counterLabel.text = step.questionNumber
         imageView.image = step.image
         textLabel.text = step.question
@@ -157,7 +145,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             guard let self = self else { return }
-            self.showNextQuestionOrResults()
+            self.presenter.showNextQuestionOrResults()
         }
     }
     
@@ -177,17 +165,9 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         alertPresenter?.showAlert(model: alertModel)
     }
     
-    private func showNextQuestionOrResults() {
-        if presenter.isLastQuestion() {
-            showResult()
-        } else {
-            presenter.switchToNextQuestion()
-            questionFactory?.requestNextQuestion()
-            
-        }
-    }
     
-    private func showResult() {
+    
+    func showResult() {
         statisticService.store(correct: correctAnswers, total: Constants.totalQuestions)
         
         let viewModel = QuizResultsViewModel(
@@ -200,7 +180,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     
     private func makeResultText() -> String {
         """
-        \(Constants.resultText) \(correctAnswers)/\(Constants.totalQuestions)\n \(Constants.totalText) \(statisticService.gamesCount)\n \(Constants.recordText) \(statisticService.bestGame.correct)/\(statisticService.bestGame.total) \(dateFormatter.string(from: statisticService.bestGame.date))\n \(Constants.accuracyText) \(String(format: "%.2f", statisticService.totalAccuracy))%
+        \(Constants.resultText) \(correctAnswers)/\(Constants.totalQuestions)\n \(Constants.totalText) \(statisticService.gamesCount)\n  a\(Constants.recordText) \(statisticService.bestGame.correct)/\(statisticService.bestGame.total) \(dateFormatter.string(from: statisticService.bestGame.date))\n \(Constants.accuracyText) \(String(format: "%.2f", statisticService.totalAccuracy))%
         """
     }
     
