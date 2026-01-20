@@ -9,8 +9,6 @@ final class QuestionFactory: QuestionFactoryProtocol  {
         self.delegate = delegate
     }
     
-    //private let questions = QuizQuestion.mockQuestions
-    
     private var movies: [MostPopularMovie] = []
     
     func requestNextQuestion() {

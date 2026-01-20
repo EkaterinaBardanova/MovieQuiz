@@ -1,6 +1,6 @@
 import UIKit
 
-final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
+final class MovieQuizViewController: UIViewController, MovieQuizViewControllerProtocol {
     
     // MARK: - IBOutlets
     
@@ -9,16 +9,14 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     @IBOutlet private weak var imageView: UIImageView!
     @IBOutlet private weak var noButton: UIButton!
     @IBOutlet private weak var yesButton: UIButton!
-    
     @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
+    
     // MARK: - State
     
-    private var correctAnswers = 0
-    private let presenter = MovieQuizPresenter()
+    private var presenter: MovieQuizPresenter!
     
     // MARK: - Dependencies
     
-    var questionFactory: QuestionFactoryProtocol?
     private var alertPresenter: AlertPresenter?
     private var statisticService: StatisticServiceProtocol = StatisticService()
     
@@ -34,18 +32,25 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        presenter.viewController = self
+        presenter = MovieQuizPresenter(viewController: self)
         setupDependencies()
         setupUI()
         showLoadingIndicator()
-        questionFactory?.loadData()
     }
     
+    // MARK: - Actions
+    
+    @IBAction private func noButtonClicked(_ sender: UIButton) {
+        presenter.noButtonClicked()
+    }
+    
+    @IBAction private func yesButtonClicked(_ sender: UIButton) {
+        presenter.yesButtonClicked()
+    }
+    
+    // MARK: - Private functions
+    
     private func setupDependencies() {
-        let networkClient = NetworkClient()
-        let moviesLoader = MoviesLoader(networkClient: networkClient)
-        let questionFactory = QuestionFactory(moviesLoader: moviesLoader, delegate: self)
-        self.questionFactory = questionFactory
         alertPresenter = AlertPresenter(screen: self)
     }
     
@@ -55,22 +60,46 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         imageView.layer.cornerRadius = 20
     }
     
-    
-    func requestFirstQuestion() {
-        questionFactory?.requestNextQuestion()
+    private func makeResultText() -> String {
+        """
+        \(Constants.resultText) \(presenter.correctAnswers)/\(Constants.totalQuestions)\n \(Constants.totalText) \(statisticService.gamesCount)\n  a\(Constants.recordText) \(statisticService.bestGame.correct)/\(statisticService.bestGame.total) \(dateFormatter.string(from: statisticService.bestGame.date))\n \(Constants.accuracyText) \(String(format: "%.2f", statisticService.totalAccuracy))%
+        """
     }
     
-    private func showLoadingIndicator() {
+    private func setButtonsEnabled(_ isEnabled: Bool) {
+        yesButton.isEnabled = isEnabled
+        noButton.isEnabled = isEnabled
+    }
+    
+    func show(quiz result: QuizResultsViewModel) {
+        statisticService.store(correct: presenter.correctAnswer, total: presenter.questionsAmount)
+        
+        let alertModel = AlertModel(
+            title: result.title,
+            message: result.text,
+            buttonText: result.buttonText)
+        { [weak self] in
+            guard let self = self else { return }
+            self.presenter.restartGame()
+            self.presenter.correctAnswers = 0
+            self.presenter.restartGame()
+        }
+        alertPresenter?.showAlert(model: alertModel)
+    }
+    
+    // MARK: - Internal functions
+    
+    func showLoadingIndicator() {
         activityIndicator.isHidden = false
         activityIndicator.startAnimating()
     }
     
-    private func hideLoadingIndicator() {
+    func hideLoadingIndicator() {
         activityIndicator.isHidden = true
         activityIndicator.stopAnimating()
     }
     
-    private func showNetworkError(message: String) {
+    func showNetworkError(message: String) {
         hideLoadingIndicator()
         
         let model = AlertModel(
@@ -78,51 +107,16 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
             message: "",
             buttonText: Constants.alertNetworkButton) { [ weak self ] in
                 guard let self else { return }
-                self.presenter.resetQuestionIndex()
-                self.correctAnswers = 0
-                self.questionFactory?.requestNextQuestion()
+                self.presenter.restartGame()
+                self.presenter.correctAnswers = 0
+                self.presenter.restartGame()
             }
         alertPresenter?.showAlert(model: model)
     }
-    
-    // MARK: - QuestionFactoryDelegate
-    
-    func didReceiveNextQuestion(question: QuizQuestion?) {
-        presenter.didReceiveNextQuestion(question: question)
-    }
-    
-    func didLoadDataFromServer() {
-        activityIndicator.isHidden = true
-        questionFactory?.requestNextQuestion()
-    }
-    
-    func didFailToLoadData(with error: Error) {
-        hideLoadingIndicator()
-        
-        let model = AlertModel(
-            title: Constants.alertNetworkTitle,
-            message: Constants.alertNetworkTitle,
-            buttonText: Constants.alertNetworkButton) { [weak self] in
-                self?.questionFactory?.loadData()
-            }
-        alertPresenter?.showAlert(model: model)
-    }
-    
-    // MARK: - Actions
-    
-    @IBAction private func noButtonClicked(_ sender: UIButton) {
-        presenter.yesButtonClicked()
-    }
-    
-    @IBAction private func yesButtonClicked(_ sender: UIButton) {
-        presenter.noButtonClicked()
-    }
-    
-    // MARK: - Private functions
     
     func show(quiz step: QuizStepViewModel) {
         counterLabel.text = step.questionNumber
-        imageView.image = step.image
+        imageView.image = UIImage(data: step.image)
         textLabel.text = step.question
         
         imageView.layer.borderWidth = 0
@@ -131,44 +125,8 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         setButtonsEnabled(true)
     }
     
-    func showAnswerResult(isCorrect: Bool) {
-        imageView.layer.masksToBounds = true
-        imageView.layer.borderWidth = 8
-        imageView.layer.cornerRadius = 20
-        
-        if isCorrect == true {
-            imageView.layer.borderColor = UIColor.ypGreen.cgColor
-            correctAnswers += 1
-        } else {
-            imageView.layer.borderColor = UIColor.ypRed.cgColor
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            guard let self = self else { return }
-            self.presenter.showNextQuestionOrResults()
-        }
-    }
-    
-    private func show(quiz result: QuizResultsViewModel) {
-        statisticService.store(correct: correctAnswers, total: presenter.questionsAmount)
-        
-        let alertModel = AlertModel(
-            title: result.title,
-            message: result.text,
-            buttonText: result.buttonText)
-        { [weak self] in
-            guard let self = self else { return }
-            self.presenter.resetQuestionIndex()
-            self.correctAnswers = 0
-            self.questionFactory?.requestNextQuestion()
-        }
-        alertPresenter?.showAlert(model: alertModel)
-    }
-    
-    
-    
     func showResult() {
-        statisticService.store(correct: correctAnswers, total: Constants.totalQuestions)
+        statisticService.store(correct: presenter.correctAnswers, total: Constants.totalQuestions)
         
         let viewModel = QuizResultsViewModel(
             title: Constants.roundFinished,
@@ -178,17 +136,11 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         show(quiz: viewModel)
     }
     
-    private func makeResultText() -> String {
-        """
-        \(Constants.resultText) \(correctAnswers)/\(Constants.totalQuestions)\n \(Constants.totalText) \(statisticService.gamesCount)\n  a\(Constants.recordText) \(statisticService.bestGame.correct)/\(statisticService.bestGame.total) \(dateFormatter.string(from: statisticService.bestGame.date))\n \(Constants.accuracyText) \(String(format: "%.2f", statisticService.totalAccuracy))%
-        """
+    func highlightImageBorder(isCorrectAnswer: Bool) {
+        imageView.layer.masksToBounds = true
+        imageView.layer.borderWidth = 8
+        imageView.layer.borderColor = isCorrectAnswer ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
     }
-    
-    private func setButtonsEnabled(_ isEnabled: Bool) {
-        yesButton.isEnabled = isEnabled
-        noButton.isEnabled = isEnabled
-    }
-    
     
     private enum Constants {
         static let roundFinished = "Раунд окончен!"
