@@ -1,8 +1,8 @@
 import Foundation
 final class MovieQuizPresenter: QuestionFactoryDelegate {
-    private let statisticService: StatisticServiceProtocol!
+    private let statisticService: StatisticServiceProtocol
     private var questionFactory: QuestionFactoryProtocol?
-    private weak var viewController: MovieQuizViewControllerProtocol? //
+    private weak var viewController: MovieQuizViewControllerProtocol?
     
     private var currentQuestion: QuizQuestion?
     private var currentQuestionIndex: Int = 0
@@ -10,13 +10,16 @@ final class MovieQuizPresenter: QuestionFactoryDelegate {
     let questionsAmount: Int = 10
     var correctAnswers: Int = 0
     
-    init(viewController: MovieQuizViewControllerProtocol) {
+    init(viewController: MovieQuizViewControllerProtocol,     statisticService: StatisticServiceProtocol) {
         self.viewController = viewController
-        statisticService = StatisticService()
-        
+        self.statisticService = statisticService
         let networkClient = NetworkClient()
         
         questionFactory = QuestionFactory(moviesLoader: MoviesLoader(networkClient: networkClient), delegate: self)
+        
+        // Временно — для работы без сервера
+        //questionFactory = QuestionFactory(moviesLoader: MockMoviesLoader(), delegate: self)
+        
         questionFactory?.loadData()
         viewController.showLoadingIndicator()
     }
@@ -53,6 +56,8 @@ final class MovieQuizPresenter: QuestionFactoryDelegate {
         }
         
         currentQuestion = question
+        print("Получен вопрос: \(question.text), длина imageData: \(question.image.count)")
+
         let viewModel = convert(model: question)
         DispatchQueue.main.async { [weak self] in
             self?.viewController?.show(quiz: viewModel)

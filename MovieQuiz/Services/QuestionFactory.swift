@@ -45,9 +45,6 @@ final class QuestionFactory: QuestionFactoryProtocol  {
                 ? movieRating > randomRating
                 : movieRating < randomRating
         
-            
-            let rating = Float(movie.rating) ?? 0
-            
             let question = QuizQuestion(image: imageData,
                                         text: questionText,
                                         correctAnswer: correctAnswer)
@@ -60,6 +57,8 @@ final class QuestionFactory: QuestionFactoryProtocol  {
     }
     
     func loadData() {
+        print("loadData запустился")
+
         moviesLoader.loadMovies { [weak self] result in
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }

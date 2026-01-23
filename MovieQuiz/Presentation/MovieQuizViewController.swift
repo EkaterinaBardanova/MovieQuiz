@@ -18,8 +18,7 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
     // MARK: - Dependencies
     
     private var alertPresenter: AlertPresenter?
-    private var statisticService: StatisticServiceProtocol = StatisticService()
-    
+    private var statisticService: StatisticServiceProtocol!
     // MARK: - Helpers
     
     private let dateFormatter: DateFormatter = {
@@ -32,10 +31,13 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        presenter = MovieQuizPresenter(viewController: self)
+        let statisticService = StatisticService()
+        self.statisticService = statisticService
+        presenter = MovieQuizPresenter(viewController: self, statisticService: statisticService)
         setupDependencies()
         setupUI()
         showLoadingIndicator()
+        
     }
     
     // MARK: - Actions
